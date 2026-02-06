@@ -26,8 +26,8 @@ jobs:
       - name: Auth to GCP (Workload Identity Federation)
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: projects/123456789/locations/global/workloadIdentityPools/gh-pool/providers/gh-provider
-          service_account: gh-actions-npm-rotator@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+          workload_identity_provider: projects/842145573977/locations/global/workloadIdentityPools/github-npm-demo/providers/github
+          service_account: github-wif@npm-rotation.iam.gserviceaccount.com
           # export_default_credentials makes ADC available to gcloud and client libraries
           export_default_credentials: true
 
