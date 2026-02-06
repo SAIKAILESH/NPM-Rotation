@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 env:
-  GCP_PROJECT_ID: your-gcp-project-id
+  GCP_PROJECT_ID: npm-rotation
   GCP_REGION: us-central1
   # This is just the secret NAME (safe to store in config)
   NPM_TOKEN_SECRET_NAME: projects/your-gcp-project-id/secrets/npm-token
@@ -28,8 +28,8 @@ jobs:
         with:
           workload_identity_provider: projects/842145573977/locations/global/workloadIdentityPools/github-npm-demo/providers/github
           service_account: github-wif@npm-rotation.iam.gserviceaccount.com
-          # export_default_credentials makes ADC available to gcloud and client libraries
-          export_default_credentials: true
+          # Fixed: Use export_environment_variables instead of export_default_credentials
+          export_environment_variables: true
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
@@ -68,9 +68,11 @@ jobs:
       - name: Auth to GCP (Workload Identity Federation)
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: projects/123456789/locations/global/workloadIdentityPools/gh-pool/providers/gh-provider
+          # Fixed: Use the same workload identity provider as the build-and-test job
+          workload_identity_provider: projects/842145573977/locations/global/workloadIdentityPools/github-npm-demo/providers/github
           service_account: gh-actions-npm-rotator@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com
-          export_default_credentials: true
+          # Fixed: Use export_environment_variables instead of export_default_credentials
+          export_environment_variables: true
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
