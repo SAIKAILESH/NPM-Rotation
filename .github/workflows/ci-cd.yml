@@ -25,7 +25,6 @@ jobs:
         with:
           workload_identity_provider: projects/842145573977/locations/global/workloadIdentityPools/github-npm-demo/providers/github
           service_account: github-wif@npm-rotation.iam.gserviceaccount.com
-          # Fixed: Use export_environment_variables instead of export_default_credentials
           export_environment_variables: true
 
       - name: Setup gcloud
