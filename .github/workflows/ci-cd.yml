@@ -1,8 +1,7 @@
-name: ci-npm-rotation-poc
+name: Install Private NPM Package 
 
 on:
   push:
-    branches: [ main ]
   workflow_dispatch: {}
 
 permissions:
@@ -12,8 +11,6 @@ permissions:
 env:
   GCP_PROJECT_ID: npm-rotation
   GCP_REGION: us-central1
-  # This is just the secret NAME (safe to store in config)
-  NPM_TOKEN_SECRET_NAME: projects/your-gcp-project-id/secrets/npm-token
 
 jobs:
   build-and-test:
@@ -39,55 +36,13 @@ jobs:
         with:
           node-version: '20'
 
-      # ---------- (A) If your build needs the token for npm install ----------
-      # We fetch the token *at runtime* from Secret Manager (versions/latest).
-      # We mask it immediately and write a temporary .npmrc for this step only.
-      - name: Fetch NPM token (latest) and npm ci
-        shell: bash
+      - name: Get npm token
         run: |
-          set -euo pipefail
-          NPM_TOKEN="$(gcloud secrets versions access latest --secret=npm-token)"
-          echo "::add-mask::$NPM_TOKEN"
-          # Create a scoped .npmrc for this workspace only
-          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
-          npm ci
-          # Clean up the token file after install
-          rm -f .npmrc
+          echo "NPM_TOKEN=$(gcloud secrets versions access latest --secret=github-npm-token)" >> $GITHUB_ENV
 
-      - name: Run tests
-        run: npm test --if-present
-
-  deploy-cloud-run:
-    if: github.ref == 'refs/heads/main'
-    needs: [ build-and-test ]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Auth to GCP (Workload Identity Federation)
-        uses: google-github-actions/auth@v2
-        with:
-          # Fixed: Use the same workload identity provider as the build-and-test job
-          workload_identity_provider: projects/842145573977/locations/global/workloadIdentityPools/github-npm-demo/providers/github
-          service_account: gh-actions-npm-rotator@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com
-          # Fixed: Use export_environment_variables instead of export_default_credentials
-          export_environment_variables: true
-
-      - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Build container
+      - name: Configure npm
         run: |
-          gcloud builds submit --tag "us-central1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/apps/npm-rotation-poc:$(git rev-parse --short HEAD)"
+         echo "@org:registry=https://npm.pkg.github.com" >> ~/.npmrc
+         echo "//npm.pkg.github.com/:_authToken=$NPM_TOKEN" >> ~/.npmrc
 
-      - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy npm-rotation-poc \
-            --image "us-central1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/apps/npm-rotation-poc:$(git rev-parse --short HEAD)" \
-            --platform managed \
-            --region "${{ env.GCP_REGION }}" \
-            --allow-unauthenticated=false \
-            --service-account "gh-actions-npm-rotator@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com" \
-            --port 8080 \
-            --set-env-vars "NPM_TOKEN_SECRET=${{ env.NPM_TOKEN_SECRET_NAME }}"
+      - run: npm install
